@@ -1,0 +1,57 @@
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract BagSubscription is ERC20, Ownable {
+    enum BagType { Safari, Wildcraft }
+
+    event BagRedeemed(address indexed account, BagType bagType, uint256 bagTokenCost);
+
+    mapping(address => BagType) public userBags;
+
+    uint256 public constant SafariTokenCost = 100;
+    uint256 public constant WildcraftTokenCost = 200;
+
+    constructor(address initialOwner) ERC20("BagCoin", "BGC") Ownable(initialOwner) {}
+
+    function mintTokens(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+
+    function burnTokens(uint256 amount) public {
+        require(amount > 0, "Amount to burn must be greater than zero");
+        require(balanceOf(msg.sender) >= amount, "Insufficient funds for token burn");
+        _burn(msg.sender, amount);
+    }
+
+    function redeemBag(uint8 bagNumber) public {
+        require(bagNumber >= 1 && bagNumber <= 2, "Invalid bag number");
+
+        BagType bag;
+        uint256 bagTokenCost;
+
+        if (bagNumber == 1) {
+            require(balanceOf(msg.sender) >= SafariTokenCost, "Insufficient funds for bag redemption");
+            bag = BagType.Safari;
+            bagTokenCost = SafariTokenCost;
+            _burn(msg.sender, bagTokenCost);
+        } else {
+            require(balanceOf(msg.sender) >= WildcraftTokenCost, "Insufficient funds for bag redemption");
+            bag = BagType.Wildcraft;
+            bagTokenCost = WildcraftTokenCost;
+            _burn(msg.sender, bagTokenCost);
+        }
+
+        userBags[msg.sender] = bag;
+        emit BagRedeemed(msg.sender, bag, bagTokenCost);
+    }
+
+    function transferBagTokens(address to, uint256 amount) external {
+        require(to != address(0), "Invalid recipient address");
+        require(balanceOf(msg.sender) >= amount, "Insufficient funds for token transfer");
+        _transfer(msg.sender, to, amount);
+    }
+}
